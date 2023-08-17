@@ -1,0 +1,61 @@
+{
+  "format": 1,
+  "restore": {
+    "F:\\Work\\gate-ip2\\gateipFireServis.csproj": {}
+  },
+  "projects": {
+    "F:\\Work\\gate-ip2\\gateipFireServis.csproj": {
+      "version": "1.0.0",
+      "restore": {
+        "projectUniqueName": "F:\\Work\\gate-ip2\\gateipFireServis.csproj",
+        "projectName": "WindowsApplication",
+        "projectPath": "F:\\Work\\gate-ip2\\gateipFireServis.csproj",
+        "packagesPath": "C:\\Users\\gate2\\.nuget\\packages\\",
+        "outputPath": "F:\\Work\\gate-ip2\\obj\\",
+        "projectStyle": "PackageReference",
+        "skipContentFileWrite": true,
+        "configFilePaths": [
+          "C:\\Users\\gate2\\AppData\\Roaming\\NuGet\\NuGet.Config",
+          "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config"
+        ],
+        "originalTargetFrameworks": [
+          "net472"
+        ],
+        "sources": {
+          "C:\\Program Files (x86)\\Microsoft SDKs\\NuGetPackages\\": {},
+          "https://api.nuget.org/v3/index.json": {}
+        },
+        "frameworks": {
+          "net472": {
+            "projectReferences": {}
+          }
+        }
+      },
+      "frameworks": {
+        "net472": {
+          "dependencies": {
+            "System.Net.Http": {
+              "include": "None",
+              "target": "Package",
+              "version": "[4.3.3, )"
+            }
+          }
+        }
+      },
+      "runtimes": {
+        "win": {
+          "#import": []
+        },
+        "win-arm64": {
+          "#import": []
+        },
+        "win-x64": {
+          "#import": []
+        },
+        "win-x86": {
+          "#import": []
+        }
+      }
+    }
+  }
+}

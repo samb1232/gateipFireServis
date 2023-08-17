@@ -1,0 +1,14 @@
+F:\Work\GATE-IP\obj\x86\Debug\gateipFireServis.csproj.AssemblyReference.cache
+F:\Work\GATE-IP\obj\x86\Debug\gateipFireServis.csproj.SuggestedBindingRedirects.cache
+F:\Work\GATE-IP\obj\x86\Debug\gateipFireServis.csproj.CoreCompileInputs.cache
+F:\Work\gate-ip2\obj\x86\Debug\gateipFireServis.csproj.AssemblyReference.cache
+F:\Work\gate-ip2\obj\x86\Debug\gateipFireServis.csproj.SuggestedBindingRedirects.cache
+F:\Work\gate-ip2\obj\x86\Debug\gateipFireServis.csproj.CoreCompileInputs.cache
+F:\Work\gate-ip2\bin\Debug\WindowsApplication.exe.config
+F:\Work\gate-ip2\bin\Debug\WindowsApplication.exe
+F:\Work\gate-ip2\bin\Debug\WindowsApplication.pdb
+F:\Work\gate-ip2\bin\Debug\Newtonsoft.Json.dll
+F:\Work\gate-ip2\bin\Debug\Newtonsoft.Json.xml
+F:\Work\gate-ip2\obj\x86\Debug\gateipFireServis.csproj.CopyComplete
+F:\Work\gate-ip2\obj\x86\Debug\WindowsApplication.exe
+F:\Work\gate-ip2\obj\x86\Debug\WindowsApplication.pdb
