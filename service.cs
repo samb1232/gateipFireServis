@@ -245,6 +245,12 @@ namespace WebPortalService
             Log.Information($"Функция CallDoorLockAll вызвана. Status code: {response.StatusCode}");
         }
 
+        private async Task TurnOffInInterval(int seconds)
+        {
+            await Task.Delay(seconds * 1000);
+            cancellationTokenSource.Cancel();
+        }
+
         static void Main(string[] args)
         {
             Log.Logger = new LoggerConfiguration()
@@ -254,8 +260,10 @@ namespace WebPortalService
             if (Environment.UserInteractive)
             {
                 WebPortalService service = new WebPortalService();
+                Task task1 = service.TurnOffInInterval(60); // shutdown in 1 minute 
                 service.OnStart(args);
                 service.OnStop();
+                task1.GetAwaiter();
             }
             else
             {

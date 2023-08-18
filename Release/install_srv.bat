@@ -14,7 +14,7 @@ set "exePath=%batDir%FireDoorService.exe"
 sc.exe create %serviceName% binpath= "%exePath%" start= auto
 
 :: Задержка для установки службы
-timeout /t 3
+timeout /t 60
 
 :: Запуск службы
 net start %serviceName%
