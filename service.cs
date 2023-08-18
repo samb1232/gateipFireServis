@@ -5,21 +5,17 @@ using System.ServiceProcess;
 using System.Text;
 using Newtonsoft.Json.Linq;
 using System.Threading;
-using System.Security.Cryptography;
 using Newtonsoft.Json;
 using System.Threading.Tasks;
 using System.Reflection;
 using System.Collections.Generic;
+using Serilog;
 
 namespace WebPortalService
 {
-
-    
     public class WebPortalService : ServiceBase
     {
-
-
-        private readonly string settingsFilePath = Path.Combine(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location), @"..\..\settings.json");
+        private readonly string settingsFilePath = Path.Combine(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location), "settings.json");
 
         private string baseUrl;
         private string authFolder;
@@ -42,6 +38,9 @@ namespace WebPortalService
         private string userSID;
 
 
+
+
+
         public WebPortalService()
         {
             ServiceName = "WebPortalService";
@@ -52,6 +51,7 @@ namespace WebPortalService
 
         protected override void OnStart(string[] args)
         {
+            Log.Information("Начало работы сервиса");
             LoadSettings();
             LoginToPortal();
             CheckFireDoorStatusPeriodically().GetAwaiter().GetResult();
@@ -59,15 +59,19 @@ namespace WebPortalService
 
         protected override void OnStop()
         {
+            Log.Information("Окончание работы сервиса");
             cancellationTokenSource.Cancel();
             httpClient.Dispose();
+            Log.CloseAndFlush();
         }
 
         private void LoadSettings()
         {
-
+            Log.Information("Начало чтения файла настроек");
             if (!File.Exists(settingsFilePath))
             {
+                Log.Error($"Ошибка, файл настроек \"{settingsFilePath}\" не найден");
+
                 throw new FileNotFoundException("Settings file not found.");
             }
 
@@ -86,16 +90,17 @@ namespace WebPortalService
             timerIntervalSeconds = (int)settings["timerIntervalSeconds"];
             doorOpenState        = (int)settings["openState"];
             doorNormalState      = (int)settings["normalState"];
+
+            Log.Information("Настройки из файла считаны успешно");
         }
 
         private void LoginToPortal()
         {
-            string passmd5 = EncryptPasswordByMD5(httpPassword);
+            Log.Information("Подключение к серверу");
             
             var requestData = new
             {
                 UserName = httpUsername,
-                // PasswordHash = passmd5
                 PasswordHash = "AAB1CA4FCCEEC333E47424A4C689585CE4197AF7B7" 
             };
 
@@ -112,52 +117,26 @@ namespace WebPortalService
 
                 if (userSIDToken != null)
                 {
+                    Log.Information("Подключение к серверу успешно");
                     userSID = (string)userSIDToken;
                 }
                 else
                 {
+                    Log.Error("Ошибка получение поля userSID");
                     throw new HttpRequestException($"Request failed. Recieved userSID is None");
                 }
             }
             else
             {
+                    Log.Error("Ошибка подключение к серверу");
                 throw new HttpRequestException($"Request failed. {response}");
             }
         }
 
-        static string CalculateMD5Hash(string input)
-        {
-            using (MD5 md5 = MD5.Create())
-            {
-                byte[] inputBytes = Encoding.UTF8.GetBytes(input);
-                byte[] hashBytes = md5.ComputeHash(inputBytes);
-
-                StringBuilder builder = new StringBuilder();
-                for (int i = 0; i < hashBytes.Length; i++)
-                {
-                    builder.Append(hashBytes[i].ToString("x2"));
-                }
-
-                return builder.ToString();
-            }
-        }
-        private string EncryptPasswordByMD5(string password)
-        {
-            string smt = "0e60612bea"; // GenerateRandomString(8 + (int)(8 * new Random().NextDouble()));
-            string finalPass = CalculateMD5Hash(
-                    CalculateMD5Hash(
-                        CalculateMD5Hash(
-                            password.ToUpper() + "F593B01C562548C6B7A31B30884BDE53").ToUpper()
-                            + smt.ToUpper()).ToUpper() 
-                            + smt.ToUpper()).ToUpper();
-            return finalPass;
-        }
-
-
-
 
         private async Task CheckFireDoorStatusPeriodically()
         {
+            Log.Information("Инициализация поллинга двери FireDoor");
             int OPEN_STATE = 1;
             int NORMAL_STATE = 0;
             int NOT_IMLEMENTED_STATE = -1;
@@ -237,8 +216,9 @@ namespace WebPortalService
             }
         }
 
-        private async Task<bool> CallDoorUnlockAll()
+        private async Task CallDoorUnlockAll()
         {
+            Log.Information("Сработал триггер функции CallDoorUnlockAll");
             var requestData = new
             {
                 Language = "",
@@ -248,12 +228,12 @@ namespace WebPortalService
             StringContent content = new StringContent(JsonConvert.SerializeObject(requestData), Encoding.UTF8, "application/json");
             HttpResponseMessage response = await httpClient.PostAsync(baseUrl + doorUnlockAllFolder, content);
 
-
-            return response.IsSuccessStatusCode;
+            Log.Information($"Функция CallDoorUnlockAll вызвана. Status code: {response.StatusCode}");
         }
 
-        private async Task<bool> CallDoorLockAll()
+        private async Task CallDoorLockAll()
         {
+            Log.Information("Сработал триггер функции CallDoorLockAll");
             var requestData = new
             {
                 Language = "",
@@ -262,12 +242,25 @@ namespace WebPortalService
 
             StringContent content = new StringContent(JsonConvert.SerializeObject(requestData), Encoding.UTF8, "application/json");
             HttpResponseMessage response = await httpClient.PostAsync(baseUrl + doorLockAllFolder, content);
-            return response.IsSuccessStatusCode;
+            Log.Information($"Функция CallDoorLockAll вызвана. Status code: {response.StatusCode}");
         }
 
         static void Main(string[] args)
         {
-            Run(new WebPortalService());
+            Log.Logger = new LoggerConfiguration()
+            .WriteTo.File("logs/log.txt", rollingInterval: RollingInterval.Day)
+            .CreateLogger();
+
+            if (Environment.UserInteractive)
+            {
+                WebPortalService service = new WebPortalService();
+                service.OnStart(args);
+                service.OnStop();
+            }
+            else
+            {
+                Run(new WebPortalService());
+            }
         }
     }
 }
