@@ -24,7 +24,7 @@ namespace WebPortalService
         private string doorGetListFolder;
 
         private string httpUsername;
-        private string httpPassword;
+        private string PasswordHash;
 
         private string fireDoorName;
         private int timerIntervalSeconds;
@@ -53,7 +53,7 @@ namespace WebPortalService
         {
             Log.Information("Начало работы сервиса");
             LoadSettings();
-            LoginToPortal();
+            LoginToPortal().GetAwaiter().GetResult();
             CheckFireDoorStatusPeriodically().GetAwaiter().GetResult();
         }
 
@@ -85,7 +85,7 @@ namespace WebPortalService
             doorUnlockAllFolder  = (string)settings["doorUnlockAllFolder"];
             doorGetListFolder    = (string)settings["doorGetListFolder"];
             httpUsername         = (string)settings["httpUsername"];
-            httpPassword         = (string)settings["httpPassword"];
+            PasswordHash         = (string)settings["PasswordHash"];
             fireDoorName         = (string)settings["fireDoorName"];
             timerIntervalSeconds = (int)settings["timerIntervalSeconds"];
             doorOpenState        = (int)settings["openState"];
@@ -94,42 +94,51 @@ namespace WebPortalService
             Log.Information("Настройки из файла считаны успешно");
         }
 
-        private void LoginToPortal()
+        private async Task LoginToPortal()
         {
-            Log.Information("Подключение к серверу");
             
             var requestData = new
             {
                 UserName = httpUsername,
-                PasswordHash = "AAB1CA4FCCEEC333E47424A4C689585CE4197AF7B7" 
+                PasswordHash
             };
-
-            var content = new StringContent(JsonConvert.SerializeObject(requestData), Encoding.UTF8, "application/json");
-            HttpResponseMessage response = httpClient.PostAsync(baseUrl + authFolder, content).GetAwaiter().GetResult();
-
-
-            if (response.IsSuccessStatusCode)
+            StringContent content;
+            HttpResponseMessage response = null;
+            do
             {
-                string responseBody = response.Content.ReadAsStringAsync().GetAwaiter().GetResult();
-                JObject responseData = JObject.Parse(responseBody);
-
-                JToken userSIDToken = responseData?["UserSID"];
-
-                if (userSIDToken != null)
+                Log.Information("Попытка подключения к серверу");
+                try
                 {
-                    Log.Information("Подключение к серверу успешно");
-                    userSID = (string)userSIDToken;
+                    content = new StringContent(JsonConvert.SerializeObject(requestData), Encoding.UTF8, "application/json");
+                    response = await httpClient.PostAsync(baseUrl + authFolder, content);
+                    Log.Information($"Статус подключения к серверу: {response.StatusCode}");
                 }
-                else
+                catch (Exception ex)
                 {
-                    Log.Error("Ошибка получение поля userSID");
-                    throw new HttpRequestException($"Request failed. Recieved userSID is None");
+                    Log.Warning("Ошибка при подключении к серверу. Осуществляю повторную попытку подключения");
+                    await Task.Delay(10000); // Задержка 10 секунд
+                    continue; 
                 }
+                if (!response.IsSuccessStatusCode)
+                {
+                    await Task.Delay(10000);//Задержка 10 секунд
+                }
+            } while (response == null || !response.IsSuccessStatusCode);
+
+            string responseBody = await response.Content.ReadAsStringAsync();
+            JObject responseData = JObject.Parse(responseBody);
+            
+            JToken userSIDToken = responseData?["UserSID"];
+            
+            if (userSIDToken != null)
+            {
+                Log.Information("Подключение к серверу успешно, поле userSID получено");
+                userSID = (string)userSIDToken;
             }
             else
             {
-                    Log.Error("Ошибка подключение к серверу");
-                throw new HttpRequestException($"Request failed. {response}");
+                Log.Error("Ошибка получения поля userSID");
+                throw new HttpRequestException($"Request failed. Recieved userSID is null");
             }
         }
 
@@ -139,7 +148,7 @@ namespace WebPortalService
             Log.Information("Инициализация поллинга двери FireDoor");
             int OPEN_STATE = 1;
             int NORMAL_STATE = 0;
-            int NOT_IMLEMENTED_STATE = -1;
+            int NOT_IMPLEMENTED_STATE = -1;
 
             async Task<int> CheckFireDoorStatus()
             {
@@ -190,7 +199,7 @@ namespace WebPortalService
                 }
                 else
                 {
-                    return NOT_IMLEMENTED_STATE;
+                    return NOT_IMPLEMENTED_STATE;
                 }
             }
 

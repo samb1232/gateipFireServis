@@ -6,6 +6,7 @@
   "doorGetListFolder": "DoorGetList",
   "httpUsername": "admin",
   "httpPassword": "aamin",
+  "PasswordHash": "AAB1CA4FCCEEC333E47424A4C689585CE4197AF7B7",
   "timerIntervalSeconds": "5",
   "fireDoorName": "FireDoor",
   "openState": 512,
