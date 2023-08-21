@@ -51,10 +51,12 @@ namespace WebPortalService
 
         protected override void OnStart(string[] args)
         {
-            Log.Information("Начало работы сервиса");
-            LoadSettings();
-            LoginToPortal().GetAwaiter().GetResult();
-            CheckFireDoorStatusPeriodically().GetAwaiter().GetResult();
+            
+                Log.Information("Начало работы сервиса");
+                LoadSettings();
+                LoginToPortal().GetAwaiter().GetResult();
+                CheckFireDoorStatusPeriodically().GetAwaiter().GetResult();
+            
         }
 
         protected override void OnStop()
@@ -113,7 +115,7 @@ namespace WebPortalService
                     response = await httpClient.PostAsync(baseUrl + authFolder, content);
                     Log.Information($"Статус подключения к серверу: {response.StatusCode}");
                 }
-                catch (Exception ex)
+                catch (Exception)
                 {
                     Log.Warning("Ошибка при подключении к серверу. Осуществляю повторную попытку подключения");
                     await Task.Delay(10000); // Задержка 10 секунд
@@ -123,7 +125,7 @@ namespace WebPortalService
                 {
                     await Task.Delay(10000);//Задержка 10 секунд
                 }
-            } while (response == null || !response.IsSuccessStatusCode);
+            } while ((response == null || !response.IsSuccessStatusCode) && !cancellationTokenSource.Token.IsCancellationRequested);
 
             string responseBody = await response.Content.ReadAsStringAsync();
             JObject responseData = JObject.Parse(responseBody);
@@ -276,7 +278,16 @@ namespace WebPortalService
             }
             else
             {
-                Run(new WebPortalService());
+                try
+                {
+                    Run(new WebPortalService());
+                }
+                catch (Exception ex)
+                {
+                    Log.Error(ex.Message);
+                    Log.CloseAndFlush();
+                }
+                
             }
         }
     }
