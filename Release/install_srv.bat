@@ -1,22 +1,21 @@
-@echo off
 setlocal
 
 :: Определение пути к текущему бат-файлу
 set "batDir=%~dp0"
 
-:: Установка имени службы
-set "serviceName=FireDoorService"
-
 :: Полный путь к исполняемому файлу службы
-set "exePath=%batDir%FireDoorService.exe"
+set "exePath=%batDir%GateIPFireService.exe"
 
 :: Установка службы
-sc.exe create %serviceName% binpath= "%exePath%" start= auto
+%exePath% install
 
 :: Задержка для установки службы
-timeout /t 60
+timeout /t 2
+
+
+%exePath% start
 
 :: Запуск службы
-net start %serviceName%
+pause
 
 endlocal

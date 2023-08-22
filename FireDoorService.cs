@@ -1,20 +1,14 @@
-using System;
-using System.Net.Http;
-using System.IO;
-using System.ServiceProcess;
-using System.Text;
-using Newtonsoft.Json.Linq;
-using System.Threading;
+п»їusing Newtonsoft.Json.Linq;
 using Newtonsoft.Json;
-using System.Threading.Tasks;
-using System.Reflection;
-using System.Collections.Generic;
 using Serilog;
+using System.Reflection;
+using System.Text;
 
-namespace WebPortalService
+namespace GateIPFireService
 {
-    public class WebPortalService : ServiceBase
+    public class FireDoorService
     {
+
         private readonly string settingsFilePath = Path.Combine(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location), "settings.json");
 
         private string baseUrl;
@@ -31,35 +25,35 @@ namespace WebPortalService
         private int doorOpenState;
         private int doorNormalState;
 
-        private readonly HttpClient httpClient;
+        private HttpClient httpClient;
         private CancellationTokenSource cancellationTokenSource;
 
 
         private string userSID;
 
-
-
-
-
-        public WebPortalService()
+        public FireDoorService()
         {
-            ServiceName = "WebPortalService";
-            CanStop = true;
+            Log.Logger = new LoggerConfiguration()
+            .WriteTo.File("logs/log.txt", rollingInterval: RollingInterval.Day)
+            .CreateLogger();
+
+            Log.Information("РРЅРёС†РёР°Р»РёР·Р°С†РёСЏ СЃРµСЂРІРёСЃР°");
             cancellationTokenSource = new CancellationTokenSource();
             httpClient = new HttpClient();
-        }
-
-        protected override void OnStart(string[] args)
-        {
-            Log.Information("Начало работы сервиса");
             LoadSettings();
-            LoginToPortal().GetAwaiter().GetResult();
-            CheckFireDoorStatusPeriodically().GetAwaiter().GetResult();
         }
 
-        protected override void OnStop()
+        public async void Start()
         {
-            Log.Information("Окончание работы сервиса");
+            Log.Information("РќР°С‡Р°Р»Рѕ СЂР°Р±РѕС‚С‹ СЃРµСЂРІРёСЃР°");
+            await LoginToPortal();
+            Task pollingTask = CheckFireDoorStatusPeriodically();
+
+        }
+
+        public void Stop()
+        {
+            Log.Information("РћРєРѕРЅС‡Р°РЅРёРµ СЂР°Р±РѕС‚С‹ СЃРµСЂРІРёСЃР°");
             cancellationTokenSource.Cancel();
             httpClient.Dispose();
             Log.CloseAndFlush();
@@ -67,10 +61,10 @@ namespace WebPortalService
 
         private void LoadSettings()
         {
-            Log.Information("Начало чтения файла настроек");
+            Log.Information("РќР°С‡Р°Р»Рѕ С‡С‚РµРЅРёСЏ С„Р°Р№Р»Р° РЅР°СЃС‚СЂРѕРµРє");
             if (!File.Exists(settingsFilePath))
             {
-                Log.Error($"Ошибка, файл настроек \"{settingsFilePath}\" не найден");
+                Log.Error($"РћС€РёР±РєР°, С„Р°Р№Р» РЅР°СЃС‚СЂРѕРµРє \"{settingsFilePath}\" РЅРµ РЅР°Р№РґРµРЅ");
 
                 throw new FileNotFoundException("Settings file not found.");
             }
@@ -78,66 +72,66 @@ namespace WebPortalService
             string settingsJson = File.ReadAllText(settingsFilePath);
             JObject settings = JObject.Parse(settingsJson);
 
+            
+            baseUrl                 = (string)settings["baseUrl"];
+            authFolder              = (string)settings["authFolder"];
+            doorLockAllFolder       = (string)settings["doorLockAllFolder"];
+            doorUnlockAllFolder     = (string)settings["doorUnlockAllFolder"];
+            doorGetListFolder       = (string)settings["doorGetListFolder"];
+            httpUsername            = (string)settings["httpUsername"];
+            PasswordHash            = (string)settings["PasswordHash"];
+            fireDoorName            = (string)settings["fireDoorName"];
+            timerIntervalSeconds    = (int)settings["timerIntervalSeconds"];
+            doorOpenState           = (int)settings["openState"];
+            doorNormalState         = (int)settings["normalState"];
 
-            baseUrl              = (string)settings["baseUrl"];
-            authFolder           = (string)settings["authFolder"];
-            doorLockAllFolder    = (string)settings["doorLockAllFolder"];
-            doorUnlockAllFolder  = (string)settings["doorUnlockAllFolder"];
-            doorGetListFolder    = (string)settings["doorGetListFolder"];
-            httpUsername         = (string)settings["httpUsername"];
-            PasswordHash         = (string)settings["PasswordHash"];
-            fireDoorName         = (string)settings["fireDoorName"];
-            timerIntervalSeconds = (int)settings["timerIntervalSeconds"];
-            doorOpenState        = (int)settings["openState"];
-            doorNormalState      = (int)settings["normalState"];
-
-            Log.Information("Настройки из файла считаны успешно");
+            Log.Information("РќР°СЃС‚СЂРѕР№РєРё РёР· С„Р°Р№Р»Р° СЃС‡РёС‚Р°РЅС‹ СѓСЃРїРµС€РЅРѕ");
         }
 
         private async Task LoginToPortal()
         {
-            
+
             var requestData = new
             {
                 UserName = httpUsername,
                 PasswordHash
             };
             StringContent content;
-            HttpResponseMessage response = null;
+            HttpResponseMessage? response = null;
             do
             {
-                Log.Information("Попытка подключения к серверу");
+                Log.Information("РџРѕРїС‹С‚РєР° РїРѕРґРєР»СЋС‡РµРЅРёСЏ Рє СЃРµСЂРІРµСЂСѓ");
                 try
                 {
                     content = new StringContent(JsonConvert.SerializeObject(requestData), Encoding.UTF8, "application/json");
                     response = await httpClient.PostAsync(baseUrl + authFolder, content);
-                    Log.Information($"Статус подключения к серверу: {response.StatusCode}");
+                    Log.Information($"РЎС‚Р°С‚СѓСЃ РїРѕРґРєР»СЋС‡РµРЅРёСЏ Рє СЃРµСЂРІРµСЂСѓ: {response.StatusCode}");
                 }
-                catch (Exception ex)
+                catch (Exception)
                 {
-                    Log.Warning("Ошибка при подключении к серверу. Осуществляю повторную попытку подключения");
-                    await Task.Delay(10000); // Задержка 10 секунд
-                    continue; 
+                    Log.Warning("РћС€РёР±РєР° РїСЂРё РїРѕРґРєР»СЋС‡РµРЅРёРё Рє СЃРµСЂРІРµСЂСѓ. РћСЃСѓС‰РµСЃС‚РІР»СЏСЋ РїРѕРІС‚РѕСЂРЅСѓСЋ РїРѕРїС‹С‚РєСѓ РїРѕРґРєР»СЋС‡РµРЅРёСЏ");
+                    await Task.Delay(10000); // Р—Р°РґРµСЂР¶РєР° 10 СЃРµРєСѓРЅРґ
+                    continue;
                 }
                 if (!response.IsSuccessStatusCode)
                 {
-                    await Task.Delay(10000);//Задержка 10 секунд
+                    await Task.Delay(10000);//Р—Р°РґРµСЂР¶РєР° 10 СЃРµРєСѓРЅРґ
                 }
-            } while (response == null || !response.IsSuccessStatusCode);
+            } while ((response == null || !response.IsSuccessStatusCode) && !cancellationTokenSource.Token.IsCancellationRequested);
 
             string responseBody = await response.Content.ReadAsStringAsync();
             JObject responseData = JObject.Parse(responseBody);
-            
-            JToken userSIDToken = responseData?["UserSID"];
-            
+
+            JToken? userSIDToken = responseData?["UserSID"];
+
             if (userSIDToken != null)
             {
-                Log.Information("Подключение к серверу успешно, поле userSID получено");
+                Log.Information("РџРѕРґРєР»СЋС‡РµРЅРёРµ Рє СЃРµСЂРІРµСЂСѓ СѓСЃРїРµС€РЅРѕ, РїРѕР»Рµ userSID РїРѕР»СѓС‡РµРЅРѕ");
                 userSID = (string)userSIDToken;
             }
             else
             {
-                Log.Error("Ошибка получения поля userSID");
+                Log.Error("РћС€РёР±РєР° РїРѕР»СѓС‡РµРЅРёСЏ РїРѕР»СЏ userSID");
                 throw new HttpRequestException($"Request failed. Recieved userSID is null");
             }
         }
@@ -145,21 +139,21 @@ namespace WebPortalService
 
         private async Task CheckFireDoorStatusPeriodically()
         {
-            Log.Information("Инициализация поллинга двери FireDoor");
+            Log.Information("РРЅРёС†РёР°Р»РёР·Р°С†РёСЏ РїРѕР»Р»РёРЅРіР° РґРІРµСЂРё FireDoor");
             int OPEN_STATE = 1;
             int NORMAL_STATE = 0;
             int NOT_IMPLEMENTED_STATE = -1;
 
             async Task<int> CheckFireDoorStatus()
             {
-                
+
                 var requestData = new
                 {
-                    Language            = "",
-                    UserSID             = userSID,
+                    Language = "",
+                    UserSID = userSID,
                     SubscriptionEnabled = true,
-                    Limit               = 0,
-                    StartToken          = 0
+                    Limit = 0,
+                    StartToken = 0
                 };
 
                 StringContent content = new StringContent(JsonConvert.SerializeObject(requestData), Encoding.UTF8, "application/json");
@@ -189,11 +183,13 @@ namespace WebPortalService
                     throw new Exception("FireDoor object not found. Make sure that FireDoor name in settings.json is correct.");
                 }
 
-                if ((int)fireDoor["HardwareState"] == doorOpenState)
+                int fireDoorState = (int)fireDoor["HardwareState"];
+
+                if (fireDoorState == doorOpenState)
                 {
                     return OPEN_STATE;
                 }
-                else if ((int)fireDoor["HardwareState"] == doorNormalState)
+                else if (fireDoorState == doorNormalState)
                 {
                     return NORMAL_STATE;
                 }
@@ -204,8 +200,8 @@ namespace WebPortalService
             }
 
             int prevStatus = NORMAL_STATE;
-            while (!cancellationTokenSource.Token.IsCancellationRequested)      
-            {                
+            while (!cancellationTokenSource.Token.IsCancellationRequested)
+            {
 
                 int fireDoorStatus = await CheckFireDoorStatus();
 
@@ -220,14 +216,14 @@ namespace WebPortalService
                     prevStatus = NORMAL_STATE;
                 }
 
-                // Пауза между проверками
+                // РџР°СѓР·Р° РјРµР¶РґСѓ РїСЂРѕРІРµСЂРєР°РјРё
                 await Task.Delay(TimeSpan.FromSeconds(timerIntervalSeconds));
             }
         }
 
         private async Task CallDoorUnlockAll()
         {
-            Log.Information("Сработал триггер функции CallDoorUnlockAll");
+            Log.Information("РЎСЂР°Р±РѕС‚Р°Р» С‚СЂРёРіРіРµСЂ С„СѓРЅРєС†РёРё CallDoorUnlockAll");
             var requestData = new
             {
                 Language = "",
@@ -237,12 +233,12 @@ namespace WebPortalService
             StringContent content = new StringContent(JsonConvert.SerializeObject(requestData), Encoding.UTF8, "application/json");
             HttpResponseMessage response = await httpClient.PostAsync(baseUrl + doorUnlockAllFolder, content);
 
-            Log.Information($"Функция CallDoorUnlockAll вызвана. Status code: {response.StatusCode}");
+            Log.Information($"Р¤СѓРЅРєС†РёСЏ CallDoorUnlockAll РІС‹Р·РІР°РЅР°. Status code: {response.StatusCode}");
         }
 
         private async Task CallDoorLockAll()
         {
-            Log.Information("Сработал триггер функции CallDoorLockAll");
+            Log.Information("РЎСЂР°Р±РѕС‚Р°Р» С‚СЂРёРіРіРµСЂ С„СѓРЅРєС†РёРё CallDoorLockAll");
             var requestData = new
             {
                 Language = "",
@@ -251,33 +247,7 @@ namespace WebPortalService
 
             StringContent content = new StringContent(JsonConvert.SerializeObject(requestData), Encoding.UTF8, "application/json");
             HttpResponseMessage response = await httpClient.PostAsync(baseUrl + doorLockAllFolder, content);
-            Log.Information($"Функция CallDoorLockAll вызвана. Status code: {response.StatusCode}");
-        }
-
-        private async Task TurnOffInInterval(int seconds)
-        {
-            await Task.Delay(seconds * 1000);
-            cancellationTokenSource.Cancel();
-        }
-
-        static void Main(string[] args)
-        {
-            Log.Logger = new LoggerConfiguration()
-            .WriteTo.File("logs/log.txt", rollingInterval: RollingInterval.Day)
-            .CreateLogger();
-
-            if (Environment.UserInteractive)
-            {
-                WebPortalService service = new WebPortalService();
-                Task task1 = service.TurnOffInInterval(60); // shutdown in 1 minute 
-                service.OnStart(args);
-                service.OnStop();
-                task1.GetAwaiter();
-            }
-            else
-            {
-                Run(new WebPortalService());
-            }
+            Log.Information($"Р¤СѓРЅРєС†РёСЏ CallDoorLockAll РІС‹Р·РІР°РЅР°. Status code: {response.StatusCode}");
         }
     }
 }

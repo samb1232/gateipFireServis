@@ -1,9 +1,15 @@
 setlocal
 
-:: Остановка службы
-net stop FireDoorService
+:: Определение пути к текущему бат-файлу
+set "batDir=%~dp0"
 
-:: Удаление службы
-sc.exe delete FireDoorService
+:: Полный путь к исполняемому файлу службы
+set "exePath=%batDir%GateIPFireService.exe"
+
+:: Установка службы
+%exePath% uninstall
+
+:: Запуск службы
+pause
 
 endlocal
