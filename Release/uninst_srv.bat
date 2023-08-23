@@ -6,10 +6,7 @@ set "batDir=%~dp0"
 :: Полный путь к исполняемому файлу службы
 set "exePath=%batDir%GateIPFireService.exe"
 
-:: Установка службы
+:: Удаление службы
 %exePath% uninstall
-
-:: Запуск службы
-pause
 
 endlocal

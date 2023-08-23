@@ -12,10 +12,7 @@ set "exePath=%batDir%GateIPFireService.exe"
 :: Задержка для установки службы
 timeout /t 2
 
-
-%exePath% start
-
 :: Запуск службы
-pause
+%exePath% start
 
 endlocal
