@@ -34,13 +34,13 @@ namespace GateIPFireService
         public FireDoorService()
         {
             Log.Logger = new LoggerConfiguration()
-            .WriteTo.File("logs/log.txt", rollingInterval: RollingInterval.Day)
+            .WriteTo.File(Path.Combine(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location), "logs\\log.txt"), rollingInterval: RollingInterval.Day)
             .CreateLogger();
 
             Log.Information("Инициализация сервиса");
             cancellationTokenSource = new CancellationTokenSource();
             httpClient = new HttpClient();
-            LoadSettings();
+            LoadSettings(); 
         }
 
         public async void Start()
@@ -219,6 +219,7 @@ namespace GateIPFireService
                 // Пауза между проверками
                 await Task.Delay(TimeSpan.FromSeconds(timerIntervalSeconds));
             }
+            Log.Information("Окончание поллинга двери FireDoor");
         }
 
         private async Task CallDoorUnlockAll()
