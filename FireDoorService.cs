@@ -61,7 +61,7 @@ namespace GateIPFireService
 
         private void LoadSettings()
         {
-            Log.Information("Начало чтения файла настроек");
+            Log.Information("Чтение файла настроек");
             if (!File.Exists(settingsFilePath))
             {
                 Log.Error($"Ошибка, файл настроек \"{settingsFilePath}\" не найден");
@@ -73,17 +73,17 @@ namespace GateIPFireService
             JObject settings = JObject.Parse(settingsJson);
 
             
-            baseUrl                 = (string)settings["baseUrl"];
-            authFolder              = (string)settings["authFolder"];
-            doorLockAllFolder       = (string)settings["doorLockAllFolder"];
-            doorUnlockAllFolder     = (string)settings["doorUnlockAllFolder"];
-            doorGetListFolder       = (string)settings["doorGetListFolder"];
-            httpUsername            = (string)settings["httpUsername"];
-            PasswordHash            = (string)settings["PasswordHash"];
-            fireDoorName            = (string)settings["fireDoorName"];
-            timerIntervalSeconds    = (int)settings["timerIntervalSeconds"];
-            doorOpenState           = (int)settings["openState"];
-            doorNormalState         = (int)settings["normalState"];
+            baseUrl              = (string)settings["baseUrl"];
+            authFolder           = (string)settings["authFolder"];
+            doorLockAllFolder    = (string)settings["doorLockAllFolder"];
+            doorUnlockAllFolder  = (string)settings["doorUnlockAllFolder"];
+            doorGetListFolder    = (string)settings["doorGetListFolder"];
+            httpUsername         = (string)settings["httpUsername"];
+            PasswordHash         = (string)settings["PasswordHash"];
+            fireDoorName         = (string)settings["fireDoorName"];
+            timerIntervalSeconds = (int)settings["timerIntervalSeconds"];
+            doorOpenState        = (int)settings["openState"];
+            doorNormalState      = (int)settings["normalState"];
 
             Log.Information("Настройки из файла считаны успешно");
         }
@@ -91,6 +91,7 @@ namespace GateIPFireService
         private async Task LoginToPortal()
         {
 
+            Log.Information("Начало авторизации на сервере");
             var requestData = new
             {
                 UserName = httpUsername,
@@ -131,7 +132,7 @@ namespace GateIPFireService
             }
             else
             {
-                Log.Error("Ошибка получения поля userSID");
+                Log.Error("Ошибка получения поля userSID. Подключение к сервису произведено, но поле userSID не получено");
                 throw new HttpRequestException($"Request failed. Recieved userSID is null");
             }
         }
@@ -202,8 +203,8 @@ namespace GateIPFireService
             int prevStatus = NORMAL_STATE;
             while (!cancellationTokenSource.Token.IsCancellationRequested)
             {
-
                 int fireDoorStatus = await CheckFireDoorStatus();
+                Log.Information($"Запрос статуса двери FireDoor. Статус: {fireDoorStatus}");
 
                 if (fireDoorStatus == OPEN_STATE && prevStatus == NORMAL_STATE)
                 {
@@ -234,7 +235,7 @@ namespace GateIPFireService
             StringContent content = new StringContent(JsonConvert.SerializeObject(requestData), Encoding.UTF8, "application/json");
             HttpResponseMessage response = await httpClient.PostAsync(baseUrl + doorUnlockAllFolder, content);
 
-            Log.Information($"Функция CallDoorUnlockAll вызвана. Status code: {response.StatusCode}");
+            Log.Information($"Функция DoorUnlockAll вызвана. Status code: {response.StatusCode}");
         }
 
         private async Task CallDoorLockAll()
@@ -248,7 +249,7 @@ namespace GateIPFireService
 
             StringContent content = new StringContent(JsonConvert.SerializeObject(requestData), Encoding.UTF8, "application/json");
             HttpResponseMessage response = await httpClient.PostAsync(baseUrl + doorLockAllFolder, content);
-            Log.Information($"Функция CallDoorLockAll вызвана. Status code: {response.StatusCode}");
+            Log.Information($"Функция DoorLockAll вызвана. Status code: {response.StatusCode}");
         }
     }
 }
